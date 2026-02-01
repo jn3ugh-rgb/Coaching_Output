@@ -8,7 +8,7 @@ from fpdf import FPDF
 # ==========================================
 # 0. 初期設定 & データ管理
 # ==========================================
-st.set_page_config(layout="wide", page_title="Life Mapping Console v8.0")
+st.set_page_config(layout="wide", page_title="Life Mapping Console v8.2")
 
 DATA_DIR = "data"
 if not os.path.exists(DATA_DIR):
@@ -78,16 +78,19 @@ def get_saved_files():
     return sorted(files, reverse=True)
 
 # ==========================================
-# 📄 PDF生成クラス (IPAexゴシック対応)
+# 📄 PDF生成クラス (IPAexゴシック固定)
 # ==========================================
+FONT_FILE = "ipaexg.ttf"
+
 class PDFReport(FPDF):
     def header(self):
-        font_path = "ipaexg.ttf" 
-        if os.path.exists(font_path):
-            self.add_font('Japanese', '', font_path)
+        # ヘッダーも日本語フォントで描画トライ
+        if os.path.exists(FONT_FILE):
+            self.add_font('Japanese', '', FONT_FILE)
             self.set_font('Japanese', '', 10)
         else:
             self.set_font('Arial', '', 10)
+        
         self.cell(0, 10, 'Life Mapping Fieldwork Log', align='R')
         self.ln(15)
 
@@ -112,23 +115,25 @@ class PDFReport(FPDF):
         self.ln(6)
 
 def generate_pdf(data):
+    # フォント存在チェック（最重要）
+    if not os.path.exists(FONT_FILE):
+        return None # エラーハンドリングは呼び出し元で行う
+
     pdf = PDFReport()
     pdf.add_page()
-    if not os.path.exists("ipaexg.ttf"):
-        pdf.set_font("Arial", size=12)
-    else:
-        pdf.set_font("Japanese", size=12)
+    pdf.add_font('Japanese', '', FONT_FILE) # フォント追加
+    pdf.set_font("Japanese", size=12)       # フォントセット
 
     pdf.set_font_size(24)
-    pdf.cell(0, 15, f"{data['name']}'s Adventure Log", ln=True, align='C') # タイトル変更
+    pdf.cell(0, 15, f"{data['name']}'s Adventure Log", ln=True, align='C')
     pdf.set_font_size(12)
     pdf.cell(0, 10, f"Date: {data['date']}", ln=True, align='C')
     pdf.ln(10)
 
-    pdf.chapter_title("1. Core Engine (価値観・原動力)") # 表現変更
+    pdf.chapter_title("1. Core Engine (価値観・原動力)")
     pdf.chapter_body(data['bedrock'])
     
-    pdf.chapter_title("2. Inventory (装備・スキル)") # 表現変更
+    pdf.chapter_title("2. Inventory (装備・スキル)")
     pdf.chapter_body(data['sediment'])
 
     pdf.chapter_title("3. Battle Strategy (攻略ルート)")
@@ -142,14 +147,13 @@ def generate_pdf(data):
     return bytes(pdf.output())
 
 # ==========================================
-# 🦋 Hiiro's RPG View (パーソナライズ画面)
+# 🦋 Hiiro's RPG View
 # ==========================================
 def render_hiiro_rpg(data):
     st.title(f"🧬 {data['name']}'s Human Observation Log")
     st.caption("Target: N=100 Collection / Status: Exploring")
     st.divider()
 
-    # CSSでゲームUI風にする
     st.markdown("""
     <style>
     .rpg-box {
@@ -158,7 +162,7 @@ def render_hiiro_rpg(data):
         padding: 15px;
         margin-bottom: 15px;
         background-color: #fff;
-        box-shadow: 4px 4px 0px #000; /* ドット絵風の影 */
+        box-shadow: 4px 4px 0px #000;
     }
     .rpg-title {
         font-family: 'Courier New', monospace;
@@ -190,10 +194,8 @@ def render_hiiro_rpg(data):
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        # Inventory (Sediment)
         st.markdown('<div class="rpg-box">', unsafe_allow_html=True)
         st.markdown('<div class="rpg-title">🎒 EQUIPMENT (装備・スキル)</div>', unsafe_allow_html=True)
-        
         skills = data["sediment"].split('\n')
         html_skills = ""
         for s in skills:
@@ -202,14 +204,12 @@ def render_hiiro_rpg(data):
         st.markdown(html_skills, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Bedrock
         st.markdown('<div class="rpg-box">', unsafe_allow_html=True)
         st.markdown('<div class="rpg-title">❤️ CORE ENGINE (原動力)</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="rpg-content">{data["bedrock"]}</div>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
-        # Battle Strategy (Cliff -> Slope)
         st.markdown('<div class="rpg-box" style="background-color: #fff0f5;">', unsafe_allow_html=True)
         st.markdown('<div class="rpg-title">⚔️ BATTLE STRATEGY</div>', unsafe_allow_html=True)
         st.markdown(f"**👾 ENEMY (BOSS):**\n{data['cliff']}")
@@ -217,38 +217,40 @@ def render_hiiro_rpg(data):
         st.markdown(f"**🧙‍♀️ SPELL (攻略法):**\n{data['slope']}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        # Quests
         st.markdown('<div class="rpg-box" style="background-color: #f0f8ff;">', unsafe_allow_html=True)
         st.markdown('<div class="rpg-title">📜 QUEST BOARD</div>', unsafe_allow_html=True)
         st.info(f"**🏆 MAIN QUEST:**\n\n{data['goal']}")
         st.success(f"**🏃 DAILY MISSION:**\n\n{data['action']}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-    # PDF Download (RPG Version)
     st.divider()
-    try:
-        pdf_bytes = generate_pdf(data)
-        st.download_button(
-            label="💾 冒険の書を保存する (PDF Download)",
-            data=pdf_bytes,
-            file_name=f"{data['name']}_AdventureLog.pdf",
-            mime='application/pdf',
-            type="primary"
-        )
-    except Exception as e:
-        st.error(f"PDF Error: {e}")
+    
+    # PDF生成処理
+    if not os.path.exists(FONT_FILE):
+        st.error(f"⚠️ エラー：同じフォルダに '{FONT_FILE}' が見つかりません！")
+        st.warning("1. IPAexゴシックをダウンロードしてください。\n2. ipaexg.ttf を app.py の隣に置いてください。")
+    else:
+        try:
+            pdf_bytes = generate_pdf(data)
+            if pdf_bytes:
+                st.download_button(
+                    label="💾 冒険の書を保存する (PDF Download)",
+                    data=pdf_bytes,
+                    file_name=f"{data['name']}_AdventureLog.pdf",
+                    mime='application/pdf',
+                    type="primary"
+                )
+        except Exception as e:
+            st.error(f"PDF Error: {e}")
 
 # ==========================================
 # 1. サイドバー
 # ==========================================
 with st.sidebar:
     st.title("🧭 Mapping Console")
-    st.caption("v8.0: Hiiro's RPG Mode")
+    st.caption("v8.2: Font Strict Mode")
     
-    app_mode = st.radio("App Mode", 
-                        ["📝 セッション実施 (Admin)", 
-                         "🦋 Hiiro's RPG Mode (Personal)", 
-                         "📂 過去ログ管理 (Archives)"])
+    app_mode = st.radio("App Mode", ["📝 セッション実施 (Admin)", "🦋 Hiiro's RPG Mode (Personal)", "📂 過去ログ管理 (Archives)"])
     st.divider()
 
     if app_mode == "📝 セッション実施 (Admin)":
@@ -275,7 +277,7 @@ with st.sidebar:
                 st.rerun()
 
 # ==========================================
-# 2. メイン画面 (Admin Mode)
+# 2. Admin Mode
 # ==========================================
 def section_header(title, purpose, questions):
     st.title(title)
@@ -286,8 +288,7 @@ def section_header(title, purpose, questions):
     st.markdown("---")
 
 if app_mode == "📝 セッション実施 (Admin)":
-
-    # === 0. Setup ===
+    # 0. Setup
     if menu == "0. 基本情報 (Setup)":
         st.title("📋 基本情報のセットアップ")
         col1, col2 = st.columns([2, 1])
@@ -303,7 +304,7 @@ if app_mode == "📝 セッション実施 (Admin)":
         st.text_area("Temporary Goal", key="temp_pin_input", value=st.session_state.data["temp_pin"], height=100, label_visibility="collapsed",
                      on_change=lambda: [st.session_state.data.update({"temp_pin": st.session_state.temp_pin_input}), auto_save()])
 
-    # === 1. Bedrock ===
+    # 1. Bedrock
     elif menu == "1. 地盤調査 (Bedrock)":
         section_header("🪨 Phase 1: 地盤調査", "価値観や原動力を特定する。", ["無意識にできてしまうことは？", "絶対に許せないことは？"])
         st.text_area("✍️ 譲れない価値観", key="bedrock_input", value=st.session_state.data["bedrock"], height=200,
@@ -311,13 +312,13 @@ if app_mode == "📝 セッション実施 (Admin)":
         st.text_area("📝 メモ", key="bedrock_note_input", value=st.session_state.data.get("bedrock_note", ""), height=100,
                     on_change=lambda: [st.session_state.data.update({"bedrock_note": st.session_state.bedrock_note_input}), auto_save()])
 
-    # === 2. Sediment ===
+    # 2. Sediment
     elif menu == "2. 堆積物確認 (Sediment)":
         section_header("🧱 Phase 2: 堆積物確認", "スキルやしがらみを棚卸しする。", ["今の肩書きは？", "もう使いたくないスキルは？"])
         st.text_area("✍️ スキル・肩書き", key="sediment_input", value=st.session_state.data["sediment"], height=200,
                     on_change=lambda: [st.session_state.data.update({"sediment": st.session_state.sediment_input}), auto_save()])
 
-    # === 3. Topography ===
+    # 3. Topography
     elif menu == "3. 地形測量 (Topography)":
         section_header("🧗 Phase 3: 地形測量", "『崖』を『坂』に再定義する。", ["何が怖い？", "失敗したらどうなる？"])
         col1, col2 = st.columns(2)
@@ -330,7 +331,7 @@ if app_mode == "📝 セッション実施 (Admin)":
             st.text_area("Slope", key="slope_input", value=st.session_state.data["slope"], label_visibility="collapsed", height=150,
                         on_change=lambda: [st.session_state.data.update({"slope": st.session_state.slope_input}), auto_save()])
 
-    # === 4. Routes ===
+    # 4. Routes
     elif menu == "4. 航路策定 (Routes)":
         section_header("🚩 Phase 4: 航路策定", "3ヶ月後の目的地を決める。", ["最低限どうなっていたい？", "明日何をする？"])
         st.text_area("🏁 3ヶ月後のゴール", key="goal_input", value=st.session_state.data["goal"], height=100,
@@ -338,38 +339,33 @@ if app_mode == "📝 セッション実施 (Admin)":
         st.text_area("👟 Next Action", key="action_input", value=st.session_state.data["action"], height=100,
                     on_change=lambda: [st.session_state.data.update({"action": st.session_state.action_input}), auto_save()])
 
-    # === 5. View (Admin用) ===
+    # 5. View (Admin)
     elif menu == "5. クライアント出力 (View)":
         if not st.session_state.data["name"]:
             st.warning("名前を入力してください。")
         else:
             st.title("🗺️ Admin Preview (Standard)")
             st.caption("※ひいろさん用はサイドバーの「🦋 Hiiro's RPG Mode」を選択してください。")
+            st.markdown("---")
             
-            # (標準ビューのコードは省略せず残す)
-            st.markdown("""
-            <style>
-            .badge { background-color: #e3f2fd; color: #1565c0; padding: 5px 12px; border-radius: 15px; border: 1px solid #90caf9; margin: 4px; display: inline-block; font-weight: bold; }
-            .core { background-color: #fff3e0; color: #ef6c00; border: 1px solid #ffcc80; }
-            </style>
-            """, unsafe_allow_html=True)
-            
-            skills = st.session_state.data["sediment"].split('\n')
-            html = '<div>'
-            for s in skills:
-                if s.strip(): html += f'<span class="badge">💎 {s}</span>'
-            html += "</div>"
-            st.markdown(html, unsafe_allow_html=True)
-            st.divider()
-            
-            c1, c2 = st.columns(2)
-            with c1:
-                st.info(f"**Main Quest:**\n{st.session_state.data['goal']}")
-            with c2:
-                st.success(f"**Daily:**\n{st.session_state.data['action']}")
+            # 標準PDFダウンロードもここに配置
+            if not os.path.exists(FONT_FILE):
+                st.error(f"⚠️ エラー：同じフォルダに '{FONT_FILE}' が見つかりません！")
+            else:
+                try:
+                    pdf_bytes = generate_pdf(st.session_state.data)
+                    if pdf_bytes:
+                        st.download_button(
+                            label="📄 Standard PDF Download",
+                            data=pdf_bytes,
+                            file_name=f"{st.session_state.data['name']}_Standard.pdf",
+                            mime='application/pdf'
+                        )
+                except Exception as e:
+                    st.error(f"PDF Error: {e}")
 
 # ==========================================
-# 3. 🦋 Hiiro's RPG Mode (パーソナライズ)
+# 3. Hiiro's RPG Mode (Personal)
 # ==========================================
 elif app_mode == "🦋 Hiiro's RPG Mode (Personal)":
     if not st.session_state.data["name"]:
