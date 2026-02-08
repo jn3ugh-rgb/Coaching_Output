@@ -70,9 +70,9 @@ def generate_pdf(data):
         return None
     pdf = PDFReport()
     pdf.add_page()
-    pdf.add_font('Japanese', '', FONT_FILE)
-    pdf.set_font("Japanese", size=12)
-
+    pdf.add_font('IPAexGothic', '', 'ipaexg.ttf', uni=True)
+    pdf.set_font('IPAexGothic', '', 11)
+    
     pdf.set_font_size(24)
     pdf.cell(0, 15, f"{data['name']}'s Adventure Log", ln=True, align='C')
     pdf.set_font_size(12)
