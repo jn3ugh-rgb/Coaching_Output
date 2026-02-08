@@ -2,249 +2,182 @@ import streamlit as st
 import json
 import os
 import pandas as pd
+import plotly.graph_objects as go
 from datetime import datetime
 from fpdf import FPDF
-from io import BytesIO
 
 # ==========================================
-# 0.初期設定
+# 0. 初期設定
 # ==========================================
-st.set_page_config(layout="wide", page_title="Life Mapping Console v12.0")
+st.set_page_config(layout="wide", page_title="Life Mapping Console v14.0")
 
-# デフォルトのデータ構造
+# デフォルトデータ（質問項目はv8.0形式を維持）
 DEFAULT_DATA = {
     "name": "",
     "date": datetime.now().strftime("%Y-%m-%d"),
     "temp_pin": "",
     "bedrock": "",
-    "bedrock_note": "",
     "sediment": "",
-    "sediment_note": "",
     "cliff": "",
     "slope": "",
     "goal": "",
     "action": ""
 }
 
-# セッション状態の初期化
 if "data" not in st.session_state:
     st.session_state.data = DEFAULT_DATA.copy()
 
+client_name = st.session_state.data["name"] if st.session_state.data["name"] else "クライアント"
+
 # ==========================================
-# 📄 PDF生成クラス (fpdf2 / IPAexゴシック対応)
+# 📄 PDF生成：セッション後分析レポート形式
 # ==========================================
 FONT_FILE = "ipaexg.ttf"
 FONT_NAME = "IPAexGothic"
 
-class PDFReport(FPDF):
+class AnalysisReport(FPDF):
     def header(self):
         if os.path.exists(FONT_FILE):
-            self.set_font(FONT_NAME, '', 10)
-        else:
-            self.set_font('Arial', '', 10)
-        self.cell(0, 10, 'Life Mapping Fieldwork Log', align='R', ln=True)
+            self.add_font(FONT_NAME, '', FONT_FILE)
+            self.set_font(FONT_NAME, '', 9)
+        self.set_text_color(150, 150, 150)
+        self.cell(0, 10, 'Life Mapping Strategy Report', align='R', ln=True)
         self.ln(5)
 
-    def chapter_title(self, label):
-        self.set_font_size(14)
-        self.set_fill_color(240, 242, 246)
+    def section_title(self, label):
+        self.set_font(FONT_NAME, 'B', 13)
+        self.set_fill_color(248, 248, 248)
+        self.set_text_color(60, 60, 60)
         self.cell(0, 10, f"  {label}", fill=True, ln=True)
-        self.ln(4)
+        self.ln(3)
 
-    def chapter_body(self, text):
-        self.set_font_size(11)
+    def section_body(self, text):
+        self.set_font(FONT_NAME, '', 11)
+        self.set_text_color(40, 40, 40)
         self.multi_cell(0, 7, text)
-        self.ln(8)
-
-    def card_body(self, title, content):
-        self.set_font_size(10)
-        self.set_text_color(100, 100, 100)
-        self.cell(0, 6, title, ln=True)
-        self.set_text_color(0, 0, 0)
-        self.set_font_size(12)
-        self.multi_cell(0, 7, content, border='L')
-        self.ln(6)
+        self.ln(5)
 
 def generate_pdf(data):
-    pdf = PDFReport()
+    pdf = AnalysisReport()
     if os.path.exists(FONT_FILE):
         pdf.add_font(FONT_NAME, '', FONT_FILE)
         pdf.set_font(FONT_NAME, '', 12)
-    else:
-        pdf.set_font("Arial", size=12)
-    
     pdf.add_page()
-    pdf.set_font_size(24)
-    pdf.cell(0, 15, f"{data['name']}'s Adventure Log", ln=True, align='C')
-    pdf.set_font_size(12)
-    pdf.cell(0, 10, f"Date: {data['date']}", ln=True, align='C')
+
+    # タイトル
+    pdf.set_font(FONT_NAME, 'B', 18)
+    pdf.cell(0, 15, "セッション後分析レポート", ln=True, align='L')
+    pdf.set_font(FONT_NAME, '', 11)
+    pdf.cell(0, 8, f"クライアント名：{data['name']} 様 / 作成日：{data['date']}", ln=True, align='L')
     pdf.ln(10)
 
-    pdf.chapter_title("1. Core Engine (価値観・原動力)")
-    pdf.chapter_body(data['bedrock'])
+    # 各フェーズ
+    pdf.section_title("Phase 1：地盤調査（本質的な原動力）")
+    pdf.section_body(data['bedrock'])
     
-    pdf.chapter_title("2. Inventory (装備・スキル)")
-    pdf.chapter_body(data['sediment'])
+    pdf.section_title("Phase 2：堆積物確認（これまでの経験と役割）")
+    pdf.section_body(data['sediment'])
 
-    pdf.chapter_title("3. Battle Strategy (攻略ルート)")
-    pdf.card_body("The Enemy (倒すべき敵)", data['cliff'])
-    pdf.card_body("Weapon (武器・戦略)", data['slope'])
+    pdf.section_title("Phase 3：地形測量（課題の再定義）")
+    pdf.set_font(FONT_NAME, 'B', 11)
+    pdf.cell(0, 8, "【心理的な壁：崖】", ln=True)
+    pdf.section_body(data['cliff'])
+    pdf.cell(0, 8, "【攻略ルート：坂】", ln=True)
+    pdf.section_body(data['slope'])
 
-    pdf.chapter_title("4. Quests (クエスト)")
-    pdf.card_body("Main Quest (3ヶ月後の勝利条件)", data['goal'])
-    pdf.card_body("Daily Mission (最初の一歩)", data['action'])
+    pdf.section_title("Phase 4：航路策定（具体的アクション）")
+    pdf.set_font(FONT_NAME, 'B', 11)
+    pdf.cell(0, 8, "【3ヶ月後の目的地】", ln=True)
+    pdf.section_body(data['goal'])
+    pdf.cell(0, 8, "【最初の一歩】", ln=True)
+    pdf.section_body(data['action'])
 
     return pdf.output()
 
 # ==========================================
-# 📊 NotebookLM用プロンプト生成
+# 📊 NotebookLM 用プロンプト生成
 # ==========================================
 def get_notebooklm_prompt(data):
-    name = data['name'] if data['name'] else "クライアント"
-    prompt = f"""
-以下のセッションデータを元に、{name}さんの現状を「地質学的な断面図」として分析し、インフォグラフィックの構成案を作成してください。
+    name = data['name'] if data['name'] else "対象者"
+    return f"""
+# セッション後分析レポート：構造化データ
 
-1. 原始地盤（本来の価値観・原動力）:
-{data['bedrock']}
+以下の構造化データとセッションログを照らし合わせ、{name}さんのための詳細な分析レポートを作成してください。
 
-2. 堆積物（これまでの経験・スキル・しがらみ）:
-{data['sediment']}
+## 1. 構造化データ
+- 【地盤（原動力）】: {data['bedrock']}
+- 【堆積物（経験）】: {data['sediment']}
+- 【崖（葛藤）】: {data['cliff']}
+- 【坂（再定義）】: {data['slope']}
+- 【目的地（ゴール）】: {data['goal']}
 
-3. 現在の地形（崖に見えている悩み・葛藤）:
-{data['cliff']}
+## 2. インフォグラフィック生成指示（差し込み図用）
+レポートのPhase 3に差し込むための、精神構造の地殻断面図を設計してください。
+- デザイン：ミニマルで清潔感のあるトーン。
+- 配色：テラコッタ（赤）、ウォームグレー（灰）、サンドベージュ（地表）、ペールイエロー（光）。ナチュラルなアースカラーに統一。
+- 構成：深層のマグマが重厚な堆積層を貫き、地表へ噴出口を作る様子を可視化。
 
-4. 登れる坂（再定義された攻略法）:
-{data['slope']}
-
-5. 目的地（3ヶ月後のゴール）:
-{data['goal']}
-
-デザイン指示:本来の熱い地熱（地盤）が、厚い堆積岩を貫いて地表へ噴き出そうとする断面図として可視化してください。
+このデータを元に、説得力のある「セッション後分析レポート」の本文を執筆してください。
 """
-    return prompt
 
 # ==========================================
-# 🦋 RPG View
-# ==========================================
-def render_rpg(data):
-    st.title(f"🧬 {data['name']}'s Human Observation Log")
-    st.caption("Target: N=100 Collection / Status: Exploring")
-    st.divider()
-
-    st.markdown("""
-    <style>
-    .rpg-box {
-        border: 2px solid #333;
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 15px;
-        background-color: #fff;
-        box-shadow: 4px 4px 0px #000;
-    }
-    .rpg-title {
-        font-family: 'Courier New', monospace;
-        font-weight: bold;
-        color: #333;
-        border-bottom: 2px dashed #ccc;
-        margin-bottom: 10px;
-        padding-bottom: 5px;
-    }
-    .badge-rpg {
-        display: inline-block;
-        background: #000;
-        color: #fff;
-        padding: 4px 8px;
-        margin: 2px;
-        border-radius: 4px;
-        font-size: 0.9em;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown('<div class="rpg-box"><div class="rpg-title">🎒 EQUIPMENT</div>', unsafe_allow_html=True)
-        for s in data["sediment"].split('\n'):
-            if s.strip(): st.markdown(f'<span class="badge-rpg">{s.strip()}</span>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="rpg-box"><div class="rpg-title">❤️ CORE ENGINE</div>', unsafe_allow_html=True)
-        st.write(data["bedrock"])
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    with c2:
-        st.markdown('<div class="rpg-box" style="background-color: #fff0f5;"><div class="rpg-title">⚔️ STRATEGY</div>', unsafe_allow_html=True)
-        st.write(f"**ENEMY:** {data['cliff']}")
-        st.write("---")
-        st.write(f"**SPELL:** {data['slope']}")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown('<div class="rpg-box" style="background-color: #f0f8ff;"><div class="rpg-title">📜 QUESTS</div>', unsafe_allow_html=True)
-        st.info(f"**GOAL:** {data['goal']}")
-        st.success(f"**DAILY:** {data['action']}")
-        st.markdown('</div>', unsafe_allow_html=True)
-
-    st.divider()
-    if os.path.exists(FONT_FILE):
-        pdf_bytes = generate_pdf(data)
-        st.download_button("💾 冒険の書を保存 (PDF)", pdf_bytes, f"{data['name']}_Log.pdf", "application/pdf")
-
-# ==========================================
-# 🛠️ メインUI (セキュア構成)
+# 🛠️ メインUI
 # ==========================================
 with st.sidebar:
     st.title("🧭 Mapping Console")
-    app_mode = st.radio("Mode", ["📝 セッション実施", "🦋 RPG Mode", "📊 NotebookLM出力"])
+    app_mode = st.radio("表示モード", ["📝 セッション入力", "🌋 断面図プレビュー", "📊 NotebookLM出力"])
     st.divider()
-
-    st.subheader("💾 Data Control")
-    st.caption("データはサーバーに保存されません。手元のPCに保存してください。")
     
+    # セキュアなデータ管理
     current_json = json.dumps(st.session_state.data, ensure_ascii=False, indent=4)
-    st.download_button("📥 データをJSONで保存", current_json, f"data_{st.session_state.data['name']}.json", "application/json")
+    st.download_button("📥 JSONデータを保存", current_json, f"mapping_{client_name}.json")
     
     uploaded = st.file_uploader("📂 JSONを読み込む", type=['json'])
     if uploaded:
         st.session_state.data.update(json.load(uploaded))
-        st.success("読み込み完了")
 
-def section_header(title, purpose, questions):
-    st.title(title)
-    st.info(f"目的: {purpose}")
-    with st.expander("🗣️ 参謀の問い", expanded=True):
-        for q in questions: st.markdown(f"- {q}")
-    st.divider()
-
-if app_mode == "📝 セッション実施":
-    menu = st.radio("フェーズ", ["0.Setup", "1.Bedrock", "2.Sediment", "3.Topography", "4.Routes"], horizontal=True)
-
-    if menu == "0.Setup":
-        st.text_input("Client Name", key="name_in", value=st.session_state.data["name"], on_change=lambda: st.session_state.data.update({"name": st.session_state.name_in}))
-        st.text_area("Temporary Goal", key="temp_in", value=st.session_state.data["temp_pin"], on_change=lambda: st.session_state.data.update({"temp_pin": st.session_state.temp_in}))
+if app_mode == "📝 セッション入力":
+    st.title(f"🕳️ Excavation: {client_name}")
+    tabs = st.tabs(["Setup", "1. Bedrock", "2. Sediment", "3. Topography", "4. Routes"])
     
-    elif menu == "1.Bedrock":
-        section_header("🪨 Phase 1:地盤調査", "価値観や原動力を特定する。", ["無意識にできてしまうことは？", "絶対に許せないことは？"])
-        st.text_area("譲れない価値観", key="bed_in", value=st.session_state.data["bedrock"], height=200, on_change=lambda: st.session_state.data.update({"bedrock": st.session_state.bed_in}))
+    with tabs[0]:
+        st.text_input("クライアント名", key="name_in", value=st.session_state.data["name"], on_change=lambda: st.session_state.data.update({"name": st.session_state.name_in}))
+        st.text_area("仮ピン (Temporary Goal)", key="temp_in", value=st.session_state.data["temp_pin"], on_change=lambda: st.session_state.data.update({"temp_pin": st.session_state.temp_in}))
     
-    elif menu == "2.Sediment":
-        section_header("🧱 Phase 2:堆積物確認", "スキルやしがらみを棚卸しする。", ["今の肩書きは？", "もう使いたくないスキルは？"])
-        st.text_area("スキル・肩書き", key="sed_in", value=st.session_state.data["sediment"], height=200, on_change=lambda: st.session_state.data.update({"sediment": st.session_state.sed_in}))
+    with tabs[1]:
+        st.text_area("Phase 1: 地盤（原動力）", key="b_in", value=st.session_state.data["bedrock"], height=250, on_change=lambda: st.session_state.data.update({"bedrock": st.session_state.b_in}))
     
-    elif menu == "3.Topography":
-        section_header("🧗 Phase 3:地形測量", "崖を坂に再定義する。", ["何が怖い？", "失敗したらどうなる？"])
+    with tabs[2]:
+        st.text_area("Phase 2: 堆積物（経験・しがらみ）", key="s_in", value=st.session_state.data["sediment"], height=250, on_change=lambda: st.session_state.data.update({"sediment": st.session_state.s_in}))
+    
+    with tabs[3]:
         c1, c2 = st.columns(2)
-        with c1: st.text_area("😱 崖に見えているもの", key="cli_in", value=st.session_state.data["cliff"], height=150, on_change=lambda: st.session_state.data.update({"cliff": st.session_state.cli_in}))
-        with c2: st.text_area("🚶 登れる坂への再定義", key="slo_in", value=st.session_state.data["slope"], height=150, on_change=lambda: st.session_state.data.update({"slope": st.session_state.slo_in}))
+        with c1: st.text_area("😱 崖 (崖に見えているもの)", key="c_in", value=st.session_state.data["cliff"], height=200, on_change=lambda: st.session_state.data.update({"cliff": st.session_state.c_in}))
+        with c2: st.text_area("🚶 坂 (再定義)", key="sl_in", value=st.session_state.data["slope"], height=200, on_change=lambda: st.session_state.data.update({"slope": st.session_state.sl_in}))
     
-    elif menu == "4.Routes":
-        section_header("🚩 Phase 4:航路策定", "3ヶ月後の目的地を決める。", ["最低限どうなっていたい？", "明日何をする？"])
-        st.text_area("🏁 3ヶ月後のゴール", key="goal_in", value=st.session_state.data["goal"], on_change=lambda: st.session_state.data.update({"goal": st.session_state.goal_in}))
-        st.text_area("👟 Next Action", key="act_in", value=st.session_state.data["action"], on_change=lambda: st.session_state.data.update({"action": st.session_state.act_in}))
+    with tabs[4]:
+        st.text_area("🏁 目的地 (Goal)", key="g_in", value=st.session_state.data["goal"], on_change=lambda: st.session_state.data.update({"goal": st.session_state.g_in}))
+        st.text_area("👟 Next Action", key="a_in", value=st.session_state.data["action"], on_change=lambda: st.session_state.data.update({"action": st.session_state.a_in}))
 
-elif app_mode == "🦋 RPG Mode":
-    render_rpg(st.session_state.data)
+elif app_mode == "🌋 断面図プレビュー":
+    st.title(f"🌋 {client_name} 様 断面図構造")
+    
+    # Plotlyによる簡易視覚化（アースカラー採用）
+    fig = go.Figure()
+    fig.add_trace(go.Bar(name="地表 (Surface)", x=[client_name], y=[15], marker_color="#E6D5B8", hovertext=st.session_state.data['cliff']))
+    fig.add_trace(go.Bar(name="堆積岩 (Sediment)", x=[client_name], y=[40], marker_color="#8D8D8D", hovertext=st.session_state.data['sediment']))
+    fig.add_trace(go.Bar(name="原始地盤 (Magma)", x=[client_name], y=[30], marker_color="#C06C84", hovertext=st.session_state.data['bedrock']))
+    
+    fig.update_layout(barmode='stack', title="精神断面の構成（プレビュー）", yaxis_title="深度", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
+    st.plotly_chart(fig, use_container_width=True)
+    
+    
+
+    if os.path.exists(FONT_FILE):
+        pdf_out = generate_pdf(st.session_state.data)
+        st.download_button("💾 分析レポート(PDF)をダウンロード", pdf_out, f"AnalysisReport_{client_name}.pdf", "application/pdf")
 
 elif app_mode == "📊 NotebookLM出力":
-    st.title("📊 NotebookLM 用プロンプト")
-    st.markdown("以下のテキストをコピーして NotebookLM に貼り付けてください。地質断面図の分析が始まります。")
+    st.title("📊 NotebookLM 連携用出力")
+    st.markdown("以下のプロンプトをコピーして、NotebookLMのソース（またはチャット）に追加してください。レポート本文とインフォグラフィックの設計図が生成されます。")
     st.code(get_notebooklm_prompt(st.session_state.data))
