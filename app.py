@@ -7,7 +7,7 @@ from fpdf import FPDF
 from io import BytesIO
 
 # ==========================================
-# 0.初期設定 & データ管理
+# 0. 初期設定 & データ管理
 # ==========================================
 st.set_page_config(layout="wide", page_title="Life Mapping Console v8.0")
 
@@ -36,7 +36,7 @@ else:
         if key not in st.session_state.data:
             st.session_state.data[key] = value
 
-# --- ⚡️オートセーブ関数 ---
+# --- オートセーブ関数 ---
 def auto_save():
     if not st.session_state.data["name"]:
         filename = "autosave_draft.json"
@@ -60,18 +60,18 @@ def load_data(filename):
             new_data = DEFAULT_DATA.copy()
             new_data.update(loaded_data)
             st.session_state.data = new_data
-        st.sidebar.success(f"📂 読み込み完了：{filename}")
+        st.sidebar.success(f"📂 読み込み完了: {filename}")
     except Exception as e:
-        st.sidebar.error(f"読み込みエラー：{e}")
+        st.sidebar.error(f"読み込みエラー: {e}")
 
 def delete_data(filename):
     filepath = os.path.join(DATA_DIR, filename)
     try:
         os.remove(filepath)
-        st.success(f"🗑️ 削除しました：{filename}")
+        st.success(f"🗑️ 削除しました: {filename}")
         return True
     except Exception as e:
-        st.error(f"削除エラー：{e}")
+        st.error(f"削除エラー: {e}")
         return False
 
 def get_saved_files():
@@ -127,7 +127,7 @@ def generate_pdf(data):
     pdf.set_font_size(24)
     pdf.cell(0, 15, f"{data['name']}'s Adventure Log", ln=True, align='C')
     pdf.set_font_size(12)
-    pdf.cell(0, 10, f"Date：{data['date']}", ln=True, align='C')
+    pdf.cell(0, 10, f"Date: {data['date']}", ln=True, align='C')
     pdf.ln(10)
 
     pdf.chapter_title("1. Core Engine (価値観・原動力)")
@@ -137,12 +137,12 @@ def generate_pdf(data):
     pdf.chapter_body(data['sediment'])
 
     pdf.chapter_title("3. Battle Strategy (攻略ルート)")
-    pdf.card_body("👾 The Enemy (倒すべき敵)", data['cliff'])
-    pdf.card_body("⚔️ Weapon (武器・戦略)", data['slope'])
+    pdf.card_body("The Enemy (倒すべき敵)", data['cliff'])
+    pdf.card_body("Weapon (武器・戦略)", data['slope'])
 
     pdf.chapter_title("4. Quests (クエスト)")
-    pdf.card_body("🏆 Main Quest (3ヶ月後の勝利条件)", data['goal'])
-    pdf.card_body("📜 Daily Mission (最初の一歩)", data['action'])
+    pdf.card_body("Main Quest (3ヶ月後の勝利条件)", data['goal'])
+    pdf.card_body("Daily Mission (最初の一歩)", data['action'])
 
     return pdf.output()
 
@@ -151,42 +151,42 @@ def generate_pdf(data):
 # ==========================================
 def render_rpg(data):
     st.title(f"🧬 {data['name']}'s Human Observation Log")
-    st.caption("Target：N=100 Collection / Status：Exploring")
+    st.caption("Target: N=100 Collection / Status: Exploring")
     st.divider()
 
     st.markdown("""
     <style>
     .rpg-box {
-        border：2px solid #333;
-        border-radius：8px;
-        padding：15px;
-        margin-bottom：15px;
-        background-color：#fff;
-        box-shadow：4px 4px 0px #000;
+        border: 2px solid #333;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        background-color: #fff;
+        box-shadow: 4px 4px 0px #000;
     }
     .rpg-title {
-        font-family：'Courier New', monospace;
-        font-weight：bold;
-        color：#333;
-        border-bottom：2px dashed #ccc;
-        margin-bottom：10px;
-        padding-bottom：5px;
+        font-family: 'Courier New', monospace;
+        font-weight: bold;
+        color: #333;
+        border-bottom: 2px dashed #ccc;
+        margin-bottom: 10px;
+        padding-bottom: 5px;
     }
     .rpg-content {
-        font-family：'Meiryo', sans-serif;
-        color：#000;
-        font-weight：500;
-        white-space：pre-wrap;
+        font-family: 'Meiryo', sans-serif;
+        color: #000;
+        font-weight: 500;
+        white-space: pre-wrap;
     }
     .badge-rpg {
-        display：inline-block;
-        background：#000;
-        color：#fff;
-        padding：4px 8px;
-        margin：2px;
-        border-radius：4px;
-        font-size：0.9em;
-        font-family：'Courier New', monospace;
+        display: inline-block;
+        background: #000;
+        color: #fff;
+        padding: 4px 8px;
+        margin: 2px;
+        border-radius: 4px;
+        font-size: 0.9em;
+        font-family: 'Courier New', monospace;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -210,17 +210,17 @@ def render_rpg(data):
         st.markdown('</div>', unsafe_allow_html=True)
 
     with col2:
-        st.markdown('<div class="rpg-box" style="background-color：#fff0f5;">', unsafe_allow_html=True)
+        st.markdown('<div class="rpg-box" style="background-color: #fff0f5;">', unsafe_allow_html=True)
         st.markdown('<div class="rpg-title">⚔️ BATTLE STRATEGY</div>', unsafe_allow_html=True)
-        st.markdown(f"**👾 ENEMY (BOSS)：**\n{data['cliff']}")
+        st.markdown(f"**ENEMY (BOSS):**\n{data['cliff']}")
         st.markdown("---")
-        st.markdown(f"**🧙‍♀️ SPELL (攻略法)：**\n{data['slope']}")
+        st.markdown(f"**SPELL (攻略法):**\n{data['slope']}")
         st.markdown('</div>', unsafe_allow_html=True)
 
-        st.markdown('<div class="rpg-box" style="background-color：#f0f8ff;">', unsafe_allow_html=True)
+        st.markdown('<div class="rpg-box" style="background-color: #f0f8ff;">', unsafe_allow_html=True)
         st.markdown('<div class="rpg-title">📜 QUEST BOARD</div>', unsafe_allow_html=True)
-        st.info(f"**🏆 MAIN QUEST：**\n\n{data['goal']}")
-        st.success(f"**🏃 DAILY MISSION：**\n\n{data['action']}")
+        st.info(f"**🏆 MAIN QUEST:**\n\n{data['goal']}")
+        st.success(f"**🏃 DAILY MISSION:**\n\n{data['action']}")
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.divider()
@@ -234,14 +234,14 @@ def render_rpg(data):
             type="primary"
         )
     except Exception as e:
-        st.error(f"PDF Error：{e}")
+        st.error(f"PDF Error: {e}")
 
 # ==========================================
-# 1.サイドバー
+# 1. サイドバー
 # ==========================================
 with st.sidebar:
     st.title("🧭 Mapping Console")
-    st.caption("v8.0：RPG Adventure Mode")
+    st.caption("v8.0: RPG Adventure Mode")
     
     app_mode = st.radio("App Mode", 
                         ["📝 セッション実施 (Admin)", 
@@ -273,7 +273,7 @@ with st.sidebar:
                 st.rerun()
 
 # ==========================================
-# 2.メイン画面 (Admin Mode)
+# 2. メイン画面 (Admin Mode)
 # ==========================================
 def section_header(title, purpose, questions):
     st.title(title)
@@ -290,46 +290,46 @@ if app_mode == "📝 セッション実施 (Admin)":
         col1, col2 = st.columns([2, 1])
         with col1:
             st.text_input("Client Name", key="name_input", value=st.session_state.data["name"], 
-                        on_change=lambda： [st.session_state.data.update({"name"： st.session_state.name_input}), auto_save()])
+                        on_change=lambda: [st.session_state.data.update({"name": st.session_state.name_input}), auto_save()])
         with col2:
             st.text_input("Date", key="date_input", value=st.session_state.data["date"],
-                        on_change=lambda： [st.session_state.data.update({"date"： st.session_state.date_input}), auto_save()])
+                        on_change=lambda: [st.session_state.data.update({"date": st.session_state.date_input}), auto_save()])
         
         st.divider()
         st.subheader("📍 仮ピン（現時点での目標・仮説）")
         st.text_area("Temporary Goal", key="temp_pin_input", value=st.session_state.data["temp_pin"], height=100, label_visibility="collapsed",
-                     on_change=lambda： [st.session_state.data.update({"temp_pin"： st.session_state.temp_pin_input}), auto_save()])
+                     on_change=lambda: [st.session_state.data.update({"temp_pin": st.session_state.temp_pin_input}), auto_save()])
 
     elif menu == "1. 地盤調査 (Bedrock)":
-        section_header("🪨 Phase 1：地盤調査", "価値観や原動力を特定する。", ["無意識にできてしまうことは？", "絶対に許せないことは？"])
+        section_header("🪨 Phase 1: 地盤調査", "価値観や原動力を特定する。", ["無意識にできてしまうことは？", "絶対に許せないことは？"])
         st.text_area("✍️ 譲れない価値観", key="bedrock_input", value=st.session_state.data["bedrock"], height=200,
-                    on_change=lambda： [st.session_state.data.update({"bedrock"： st.session_state.bedrock_input}), auto_save()])
+                    on_change=lambda: [st.session_state.data.update({"bedrock": st.session_state.bedrock_input}), auto_save()])
         st.text_area("📝 メモ", key="bedrock_note_input", value=st.session_state.data.get("bedrock_note", ""), height=100,
-                    on_change=lambda： [st.session_state.data.update({"bedrock_note"： st.session_state.bedrock_note_input}), auto_save()])
+                    on_change=lambda: [st.session_state.data.update({"bedrock_note": st.session_state.bedrock_note_input}), auto_save()])
 
     elif menu == "2. 堆積物確認 (Sediment)":
-        section_header("🧱 Phase 2：堆積物確認", "スキルやしがらみを棚卸しする。", ["今の肩書きは？", "もう使いたくないスキルは？"])
+        section_header("🧱 Phase 2: 堆積物確認", "スキルやしがらみを棚卸しする。", ["今の肩書きは？", "もう使いたくないスキルは？"])
         st.text_area("✍️ スキル・肩書き", key="sediment_input", value=st.session_state.data["sediment"], height=200,
-                    on_change=lambda： [st.session_state.data.update({"sediment"： st.session_state.sediment_input}), auto_save()])
+                    on_change=lambda: [st.session_state.data.update({"sediment": st.session_state.sediment_input}), auto_save()])
 
     elif menu == "3. 地形測量 (Topography)":
-        section_header("🧗 Phase 3：地形測量", "『崖』を『坂』に再定義する。", ["何が怖い？", "失敗したらどうなる？"])
+        section_header("🧗 Phase 3: 地形測量", "『崖』を『坂』に再定義する。", ["何が怖い？", "失敗したらどうなる？"])
         col1, col2 = st.columns(2)
         with col1:
             st.subheader("😱 崖に見えているもの")
             st.text_area("Cliff", key="cliff_input", value=st.session_state.data["cliff"], label_visibility="collapsed", height=150, 
-                        on_change=lambda： [st.session_state.data.update({"cliff"： st.session_state.cliff_input}), auto_save()])
+                        on_change=lambda: [st.session_state.data.update({"cliff": st.session_state.cliff_input}), auto_save()])
         with col2:
             st.subheader("🚶 登れる坂への再定義")
             st.text_area("Slope", key="slope_input", value=st.session_state.data["slope"], label_visibility="collapsed", height=150,
-                        on_change=lambda： [st.session_state.data.update({"slope"： st.session_state.slope_input}), auto_save()])
+                        on_change=lambda: [st.session_state.data.update({"slope": st.session_state.slope_input}), auto_save()])
 
     elif menu == "4. 航路策定 (Routes)":
-        section_header("🚩 Phase 4：航路策定", "3ヶ月後の目的地を決める。", ["最低限どうなっていたい？", "明日何をする？"])
+        section_header("🚩 Phase 4: 航路策定", "3ヶ月後の目的地を決める。", ["最低限どうなっていたい？", "明日何をする？"])
         st.text_area("🏁 3ヶ月後のゴール", key="goal_input", value=st.session_state.data["goal"], height=100,
-                    on_change=lambda： [st.session_state.data.update({"goal"： st.session_state.goal_input}), auto_save()])
+                    on_change=lambda: [st.session_state.data.update({"goal": st.session_state.goal_input}), auto_save()])
         st.text_area("👟 Next Action", key="action_input", value=st.session_state.data["action"], height=100,
-                    on_change=lambda： [st.session_state.data.update({"action"： st.session_state.action_input}), auto_save()])
+                    on_change=lambda: [st.session_state.data.update({"action": st.session_state.action_input}), auto_save()])
 
     elif menu == "5. クライアント出力 (View)":
         if not st.session_state.data["name"]:
@@ -341,16 +341,16 @@ if app_mode == "📝 セッション実施 (Admin)":
             skills = st.session_state.data["sediment"].split('\n')
             html = '<div>'
             for s in skills:
-                if s.strip(): html += f'<span style="background-color：#e3f2fd; color：#1565c0; padding：5px 12px; border-radius：15px; margin：4px; display：inline-block; font-weight：bold; border：1px solid #90caf9;">💎 {s}</span>'
+                if s.strip(): html += f'<span style="background-color: #e3f2fd; color: #1565c0; padding: 5px 12px; border-radius: 15px; margin: 4px; display: inline-block; font-weight: bold; border: 1px solid #90caf9;">💎 {s}</span>'
             html += "</div>"
             st.markdown(html, unsafe_allow_html=True)
             st.divider()
             
             c1, c2 = st.columns(2)
-            with c1：
-                st.info(f"**Main Quest：**\n{st.session_state.data['goal']}")
-            with c2：
-                st.success(f"**Daily：**\n{st.session_state.data['action']}")
+            with c1:
+                st.info(f"**Main Quest:**\n{st.session_state.data['goal']}")
+            with c2:
+                st.success(f"**Daily:**\n{st.session_state.data['action']}")
 
 elif app_mode == "🦋 RPG Mode (Personal)":
     if not st.session_state.data["name"]:
